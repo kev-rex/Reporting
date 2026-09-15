@@ -1,0 +1,1487 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Messwert-Verbund · Kläranlage &amp; Indirekteinleiter</title>
+<style>
+  :root{
+    --bg:#101b24;
+    --panel:#17242f;
+    --panel-2:#1d2f3c;
+    --line:#2c4051;
+    --text:#e8eef2;
+    --text-muted:#8ea3b0;
+    --accent:#2fb6a6;      /* Kläranlage */
+    --accent-2:#d98f3b;    /* Indirekteinleiter */
+    --neg:#c1553b;
+    --pos:#2fb6a6;
+    --focus:#7fd8cc;
+    --mono: "IBM Plex Mono","SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+    --sans: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    font-size:15px;
+    line-height:1.5;
+  }
+  a{color:var(--focus);}
+  button:focus-visible, select:focus-visible, input:focus-visible, [tabindex]:focus-visible{
+    outline:2px solid var(--focus);
+    outline-offset:2px;
+  }
+  .app{
+    display:grid;
+    grid-template-columns:220px 1fr;
+    min-height:100vh;
+  }
+  /* Sidebar */
+  .side{
+    background:var(--panel);
+    border-right:1px solid var(--line);
+    padding:20px 0;
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+  }
+  .brand{
+    padding:0 20px 18px 20px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:12px;
+  }
+  .brand .name{
+    font-weight:600;
+    font-size:16px;
+    letter-spacing:.2px;
+  }
+  .brand .sub{
+    color:var(--text-muted);
+    font-size:12px;
+    margin-top:4px;
+  }
+  .navbtn{
+    text-align:left;
+    background:transparent;
+    border:none;
+    border-left:3px solid transparent;
+    color:var(--text-muted);
+    padding:10px 20px;
+    font-size:14px;
+    cursor:pointer;
+    font-family:var(--sans);
+  }
+  .navbtn:hover{color:var(--text);background:rgba(255,255,255,.03);}
+  .navbtn.active{
+    color:var(--text);
+    border-left-color:var(--accent);
+    background:rgba(47,182,166,.08);
+    font-weight:600;
+  }
+  .side-foot{
+    margin-top:auto;
+    padding:14px 20px 0 20px;
+    border-top:1px solid var(--line);
+    font-size:11px;
+    color:var(--text-muted);
+  }
+  .side-foot .count{font-family:var(--mono);color:var(--text);}
+
+  /* Main */
+  .main{padding:28px 32px 60px 32px; max-width:1180px;}
+  .pageheader{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    flex-wrap:wrap;
+    gap:12px;
+    margin-bottom:22px;
+    padding-bottom:16px;
+    border-bottom:1px solid var(--line);
+  }
+  .pageheader h1{
+    font-size:20px;
+    margin:0 0 4px 0;
+    font-weight:600;
+  }
+  .pageheader p{margin:0;color:var(--text-muted);font-size:13px;}
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    padding:20px;
+    margin-bottom:20px;
+  }
+  .panel h2{
+    font-size:14px;
+    margin:0 0 16px 0;
+    font-weight:600;
+    color:var(--text);
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .panel h2 .unit-hint{
+    font-size:11px;
+    font-weight:400;
+    color:var(--text-muted);
+  }
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+  @media (max-width:820px){
+    .app{grid-template-columns:1fr;}
+    .side{flex-direction:row;overflow-x:auto;padding:10px;}
+    .brand{display:none;}
+    .side-foot{display:none;}
+    .grid2,.grid3{grid-template-columns:1fr;}
+    .main{padding:18px;}
+  }
+
+  label{
+    display:block;
+    font-size:12px;
+    color:var(--text-muted);
+    margin-bottom:6px;
+  }
+  .field{margin-bottom:14px;}
+  input, select, textarea{
+    width:100%;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:9px 10px;
+    font-size:14px;
+    font-family:var(--sans);
+  }
+  input[type=number], input[type=date], input[type=time]{font-family:var(--mono);}
+  textarea{resize:vertical;min-height:54px;}
+  .radiorow{display:flex;gap:16px;margin-top:2px;}
+  .radiorow label{display:flex;align-items:center;gap:6px;color:var(--text);font-size:13px;cursor:pointer;}
+  .radiorow input{width:auto;}
+
+  fieldset{border:1px solid var(--line);padding:14px 16px;margin:0 0 16px 0;}
+  legend{padding:0 8px;font-size:12px;color:var(--text-muted);}
+
+  .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
+  button.btn{
+    background:var(--accent);
+    color:#08211d;
+    border:none;
+    padding:10px 18px;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+    font-family:var(--sans);
+  }
+  button.btn:hover{filter:brightness(1.08);}
+  button.btn.secondary{
+    background:transparent;
+    color:var(--text);
+    border:1px solid var(--line);
+    font-weight:500;
+  }
+  button.btn.secondary:hover{border-color:var(--focus);}
+  button.btn.danger{background:var(--neg);color:#fff;}
+  button.btn:disabled{opacity:.4;cursor:not-allowed;}
+
+  .msg{
+    font-size:13px;
+    padding:9px 12px;
+    margin-top:10px;
+    border-left:3px solid var(--accent);
+    background:rgba(47,182,166,.08);
+    display:none;
+  }
+  .msg.show{display:block;}
+  .msg.error{border-left-color:var(--neg);background:rgba(193,85,59,.1);}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{
+    text-align:left;
+    padding:8px 10px;
+    border-bottom:1px solid var(--line);
+    white-space:nowrap;
+  }
+  th{color:var(--text-muted);font-weight:600;font-size:11.5px;}
+  td.num, th.num{font-family:var(--mono);text-align:right;}
+  tr:hover td{background:rgba(255,255,255,.02);}
+  .tablewrap{overflow-x:auto;}
+  .tag{
+    display:inline-block;
+    padding:2px 8px;
+    font-size:11px;
+    font-family:var(--mono);
+    border:1px solid var(--line);
+  }
+  .tag.klaeranlage{color:var(--accent);border-color:var(--accent);}
+  .tag.indirekteinleiter{color:var(--accent-2);border-color:var(--accent-2);}
+
+  .filterbar{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px;}
+  .filterbar .field{margin-bottom:0;min-width:150px;}
+
+  .statgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);}
+  .statcell{background:var(--panel);padding:14px;}
+  .statcell .label{font-size:11px;color:var(--text-muted);margin-bottom:6px;}
+  .statcell .value{font-family:var(--mono);font-size:20px;}
+  @media (max-width:820px){.statgrid{grid-template-columns:repeat(2,1fr);}}
+
+  .corrtable td, .corrtable th{text-align:center;font-family:var(--mono);}
+  .corrtable th{writing-mode:horizontal-tb;}
+  .corrcell{color:#0b1a17;font-weight:600;cursor:default;}
+  .empty{color:var(--text-muted);font-size:13px;padding:20px 0;text-align:center;}
+
+  canvas{width:100%;display:block;background:var(--panel-2);border:1px solid var(--line);}
+  .chartlegend{display:flex;gap:18px;margin-top:10px;font-size:12px;color:var(--text-muted);}
+  .chartlegend span{display:inline-flex;align-items:center;gap:6px;}
+  .swatch{width:10px;height:10px;display:inline-block;}
+
+  .readout{font-family:var(--mono);font-size:13px;color:var(--text-muted);margin-top:8px;}
+  .readout b{color:var(--text);}
+
+  .hidden{display:none !important;}
+  .helpbox{font-size:12.5px;color:var(--text-muted);border:1px dashed var(--line);padding:12px 14px;margin-bottom:18px;}
+  .helpbox code{font-family:var(--mono);background:var(--panel-2);padding:1px 5px;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <nav class="side">
+    <div class="brand">
+      <div class="name">Messwert&#8209;Verbund</div>
+      <div class="sub">Kläranlage &amp; Indirekteinleiter</div>
+    </div>
+    <button class="navbtn active" data-view="eingabe">Dateneingabe</button>
+    <button class="navbtn" data-view="uebersicht">Datenübersicht</button>
+    <button class="navbtn" data-view="analyse">Analyse</button>
+    <button class="navbtn" data-view="austausch">Datenaustausch</button>
+    <div class="side-foot">
+      Datensätze: <span class="count" id="sideCount">0</span><br>
+      Lokale Speicherung im Browser
+    </div>
+  </nav>
+
+  <main class="main">
+
+    <!-- ================= EINGABE ================= -->
+    <section id="view-eingabe" class="view">
+      <div class="pageheader">
+        <div>
+          <h1>Dateneingabe</h1>
+          <p>Messwerte eines Termins erfassen — Kläranlage oder Indirekteinleiter.</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Neuer Messdatensatz</h2>
+        <form id="entryForm" novalidate>
+          <fieldset>
+            <legend>Herkunft &amp; Zeitpunkt</legend>
+            <div class="grid3">
+              <div class="field">
+                <label for="f_source">Quelle</label>
+                <select id="f_source" required>
+                  <option value="klaeranlage">Kläranlage (Zulauf/Ablauf)</option>
+                  <option value="indirekteinleiter">Indirekteinleiter</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="f_date">Datum</label>
+                <input type="date" id="f_date" required>
+              </div>
+              <div class="field">
+                <label for="f_time">Uhrzeit</label>
+                <input type="time" id="f_time" required>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Zulauf</legend>
+            <div class="grid3">
+              <div class="field">
+                <label for="f_zulauf_csb">CSB (mg/L)</label>
+                <input type="number" step="any" id="f_zulauf_csb" min="0">
+              </div>
+              <div class="field">
+                <label for="f_zulauf_toc">TOC (mg/L)</label>
+                <input type="number" step="any" id="f_zulauf_toc" min="0">
+              </div>
+              <div class="field">
+                <label for="f_zulauf_nges">Stickstoff TNb (mg/L)</label>
+                <input type="number" step="any" id="f_zulauf_nges" min="0">
+              </div>
+              <div class="field">
+                <label for="f_zulauf_pges">Phosphor P<sub>ges</sub> (mg/L)</label>
+                <input type="number" step="any" id="f_zulauf_pges" min="0">
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Zulauf biologischer Reaktor</legend>
+            <div class="grid3">
+              <div class="field">
+                <label for="f_zbr_csb">CSB (mg/L)</label>
+                <input type="number" step="any" id="f_zbr_csb" min="0">
+              </div>
+              <div class="field">
+                <label for="f_zbr_bsb5">BSB5 (mg/L)</label>
+                <input type="number" step="any" id="f_zbr_bsb5" min="0">
+              </div>
+              <div class="field">
+                <label for="f_zbr_toc">TOC (mg/L)</label>
+                <input type="number" step="any" id="f_zbr_toc" min="0">
+              </div>
+              <div class="field">
+                <label for="f_zbr_nges">Stickstoff TNb (mg/L)</label>
+                <input type="number" step="any" id="f_zbr_nges" min="0">
+              </div>
+              <div class="field">
+                <label for="f_zbr_pges">Phosphor P<sub>ges</sub> (mg/L)</label>
+                <input type="number" step="any" id="f_zbr_pges" min="0">
+              </div>
+              <div class="field">
+                <label for="f_zbr_nh4">NH<sub>4</sub>-N (mg/L)</label>
+                <input type="number" step="any" id="f_zbr_nh4" min="0">
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Ablauf</legend>
+            <div class="grid3">
+              <div class="field">
+                <label for="f_ablauf_menge">Abwassermenge (m³/d)</label>
+                <input type="number" step="any" id="f_ablauf_menge" min="0">
+              </div>
+              <div class="field">
+                <label for="f_ablauf_csb">CSB (mg/L)</label>
+                <input type="number" step="any" id="f_ablauf_csb" min="0">
+              </div>
+              <div class="field">
+                <label for="f_ablauf_toc">TOC (mg/L)</label>
+                <input type="number" step="any" id="f_ablauf_toc" min="0">
+              </div>
+              <div class="field">
+                <label for="f_ablauf_nges">Stickstoff TNb (mg/L)</label>
+                <input type="number" step="any" id="f_ablauf_nges" min="0">
+              </div>
+              <div class="field">
+                <label for="f_ablauf_pges">Phosphor P<sub>ges</sub> (mg/L)</label>
+                <input type="number" step="any" id="f_ablauf_pges" min="0">
+              </div>
+              <div class="field">
+                <label for="f_ablauf_nh4">NH<sub>4</sub>-N (mg/L)</label>
+                <input type="number" step="any" id="f_ablauf_nh4" min="0">
+              </div>
+              <div class="field">
+                <label for="f_ablauf_no3">NO<sub>3</sub>-N (mg/L)</label>
+                <input type="number" step="any" id="f_ablauf_no3" min="0">
+              </div>
+              <div class="field">
+                <label for="f_ablauf_no2">NO<sub>2</sub>-N (mg/L)</label>
+                <input type="number" step="any" id="f_ablauf_no2" min="0">
+              </div>
+            </div>
+            <p style="color:var(--text-muted);font-size:12.5px;margin:12px 0 0 0;">
+              Σ N anorg. (Summe aus NH<sub>4</sub>-N, NO<sub>3</sub>-N und NO<sub>2</sub>-N) wird automatisch
+              berechnet und in Datenübersicht, Statistik, Korrelationsmatrix und Diagrammen angezeigt,
+              sobald alle drei Werte für diesen Datensatz vorliegen.<br>
+              Ebenso werden die Frachten (kg/d) für CSB, TOC, TNb und P<sub>ges</sub> automatisch aus dem
+              jeweiligen Konzentrationswert und dieser Abwassermenge berechnet — für alle drei Messstellen
+              (Zulauf, Zulauf biologischer Reaktor und Ablauf), da aktuell nur hier eine Abwassermenge erfasst
+              wird.
+            </p>
+          </fieldset>
+
+
+          <fieldset>
+            <legend>Bemerkung</legend>
+            <div class="field" style="margin-bottom:0;">
+              <label for="f_note">Optional — Besonderheiten, Probenahmeart, etc.</label>
+              <textarea id="f_note" placeholder="z. B. Stichprobe, Störung Vorklärung, Reinigung Sammler ..."></textarea>
+            </div>
+          </fieldset>
+
+          <div class="btnrow">
+            <button type="submit" class="btn">Datensatz speichern</button>
+            <button type="button" class="btn secondary" id="resetForm">Formular leeren</button>
+          </div>
+          <div class="msg" id="formMsg"></div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ================= UEBERSICHT ================= -->
+    <section id="view-uebersicht" class="view hidden">
+      <div class="pageheader">
+        <div>
+          <h1>Datenübersicht</h1>
+          <p>Alle erfassten und importierten Messdatensätze.</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="filterbar">
+          <div class="field">
+            <label for="u_source">Quelle</label>
+            <select id="u_source">
+              <option value="alle">Alle</option>
+              <option value="klaeranlage">Kläranlage</option>
+              <option value="indirekteinleiter">Indirekteinleiter</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="u_from">Von</label>
+            <input type="date" id="u_from">
+          </div>
+          <div class="field">
+            <label for="u_to">Bis</label>
+            <input type="date" id="u_to">
+          </div>
+          <div class="btnrow" style="margin-top:0;">
+            <button class="btn secondary" id="u_clearFilter">Filter zurücksetzen</button>
+          </div>
+        </div>
+
+        <div class="tablewrap">
+          <table id="dataTable">
+            <thead id="dataTableHead"></thead>
+            <tbody id="dataTableBody"></tbody>
+          </table>
+          <div class="empty hidden" id="tableEmpty">Keine Datensätze vorhanden — erst unter „Dateneingabe“ erfassen oder unter „Datenaustausch“ importieren.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= ANALYSE ================= -->
+    <section id="view-analyse" class="view hidden">
+      <div class="pageheader">
+        <div>
+          <h1>Analyse</h1>
+          <p>Zusammenhänge zwischen Kläranlagen- und Indirekteinleiter-Werten.</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Datenbasis</h2>
+        <div class="filterbar">
+          <div class="field">
+            <label for="a_source">Quelle</label>
+            <select id="a_source">
+              <option value="alle">Alle (kombiniert)</option>
+              <option value="klaeranlage">Nur Kläranlage</option>
+              <option value="indirekteinleiter">Nur Indirekteinleiter</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="a_from">Von</label>
+            <input type="date" id="a_from">
+          </div>
+          <div class="field">
+            <label for="a_to">Bis</label>
+            <input type="date" id="a_to">
+          </div>
+        </div>
+        <div class="readout" id="a_basisInfo">Keine Daten geladen.</div>
+      </div>
+
+      <div class="panel">
+        <h2>Statistik je Parameter <span class="unit-hint">(gefilterte Datenbasis)</span></h2>
+        <div class="tablewrap">
+          <table id="statsTable">
+            <thead><tr><th>Parameter</th><th class="num">n</th><th class="num">Min</th><th class="num">Mittel</th><th class="num">Max</th></tr></thead>
+            <tbody id="statsTableBody"></tbody>
+          </table>
+          <div class="empty hidden" id="statsEmpty">Keine Daten für die gewählte Datenbasis.</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Korrelationsmatrix (Pearson r) <span class="unit-hint">Wertepaare pro Zeitpunkt, Quelle-übergreifend gebildet</span></h2>
+        <div class="tablewrap">
+          <table class="corrtable" id="corrTable"></table>
+          <div class="empty hidden" id="corrEmpty">Für eine Korrelation werden mindestens 3 vollständige Wertepaare je Parameterpaar benötigt.</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Streudiagramm zweier Parameter</h2>
+        <div class="grid2">
+          <div class="field">
+            <label for="a_paramX">Parameter X</label>
+            <select id="a_paramX"></select>
+          </div>
+          <div class="field">
+            <label for="a_paramY">Parameter Y</label>
+            <select id="a_paramY"></select>
+          </div>
+        </div>
+        <canvas id="scatterCanvas" width="900" height="420" aria-label="Streudiagramm"></canvas>
+        <div class="readout" id="scatterReadout"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Zeitverlauf</h2>
+        <div class="field" style="max-width:320px;">
+          <label for="a_paramT">Parameter</label>
+          <select id="a_paramT"></select>
+        </div>
+        <canvas id="timeCanvas" width="900" height="420" aria-label="Zeitverlauf"></canvas>
+        <div class="chartlegend">
+          <span><i class="swatch" style="background:var(--accent)"></i>Kläranlage</span>
+          <span><i class="swatch" style="background:var(--accent-2)"></i>Indirekteinleiter</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= AUSTAUSCH ================= -->
+    <section id="view-austausch" class="view hidden">
+      <div class="pageheader">
+        <div>
+          <h1>Datenaustausch</h1>
+          <p>Messwerte zwischen Kläranlage und Indirekteinleiter zusammenführen.</p>
+        </div>
+      </div>
+
+      <div class="helpbox">
+        Die App speichert Daten lokal im Browser der jeweiligen Seite (Kläranlage / Indirekteinleiter). Um beide
+        Datenbestände gemeinsam auszuwerten, exportiert jede Seite ihre Daten als Datei und die andere Seite
+        importiert diese Datei zusätzlich. Beim Import werden Datensätze anhand von Quelle, Datum, Uhrzeit
+        zusammengeführt — bereits vorhandene Datensätze werden nicht doppelt angelegt.
+      </div>
+
+      <div class="panel">
+        <h2>Export</h2>
+        <div class="btnrow">
+          <button class="btn secondary" id="exportJson">Als JSON exportieren</button>
+          <button class="btn secondary" id="exportCsv">Als CSV exportieren</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Import</h2>
+        <div class="field">
+          <label for="importFile">JSON- oder CSV-Datei auswählen</label>
+          <input type="file" id="importFile" accept=".json,.csv,text/csv,application/json">
+        </div>
+        <div class="btnrow">
+          <button class="btn" id="importBtn" disabled>Datei importieren</button>
+        </div>
+        <div class="msg" id="importMsg"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Alle Daten löschen</h2>
+        <p style="color:var(--text-muted);font-size:13px;margin-top:0;">Entfernt alle lokal gespeicherten Datensätze unwiderruflich aus diesem Browser.</p>
+        <button class="btn danger" id="wipeAll">Alle Datensätze löschen</button>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------------------------------------------------------
+     Parameter-Definition (eine Quelle der Wahrheit für alle Views)
+     Messwerte sind nach Messstelle gegliedert, da z. B. CSB an mehreren
+     Stellen (Zulauf, Zulauf biol. Reaktor, Ablauf) getrennt erfasst und
+     ausgewertet werden muss (z. B. zur Betrachtung des CSB-Abbaus).
+  --------------------------------------------------------------- */
+  var GROUPS = [
+    { key:"zulauf", label:"Zulauf", short:"ZU", params:[
+        { key:"csb",  label:"CSB",              unit:"mg/L" },
+        { key:"toc",  label:"TOC",              unit:"mg/L" },
+        { key:"nges", label:"TNb",           unit:"mg/L" },
+        { key:"pges", label:"P ges.",           unit:"mg/L" }
+      ] },
+    { key:"zbr", label:"Zulauf biologischer Reaktor", short:"ZBR", params:[
+        { key:"csb",  label:"CSB",              unit:"mg/L" },
+        { key:"bsb5", label:"BSB5",             unit:"mg/L" },
+        { key:"toc",  label:"TOC",              unit:"mg/L" },
+        { key:"nges", label:"TNb",           unit:"mg/L" },
+        { key:"pges", label:"P ges.",           unit:"mg/L" },
+        { key:"nh4",  label:"NH4-N",            unit:"mg/L" }
+      ] },
+    { key:"ablauf", label:"Ablauf", short:"AB", params:[
+        { key:"menge",label:"Abwassermenge",     unit:"m³/d" },
+        { key:"csb",  label:"CSB",              unit:"mg/L" },
+        { key:"toc",  label:"TOC",              unit:"mg/L" },
+        { key:"nges", label:"TNb",           unit:"mg/L" },
+        { key:"pges", label:"P ges.",           unit:"mg/L" },
+        { key:"nh4",  label:"NH4-N",            unit:"mg/L" },
+        { key:"no3",  label:"NO3-N",            unit:"mg/L" },
+        { key:"no2",  label:"NO2-N",            unit:"mg/L" }
+      ] }
+  ];
+
+  // Flache Parameterliste (Feld-ID = Gruppe + Basisparameter), aus GROUPS abgeleitet.
+  // Dies sind ausschließlich EINGABE-Parameter (jeder erhält ein Formularfeld).
+  var PARAMS = [];
+  GROUPS.forEach(function(g){
+    g.params.forEach(function(p){
+      PARAMS.push({
+        key: g.key + "_" + p.key,
+        baseKey: p.key,
+        group: g.key,
+        groupLabel: g.label,
+        label: p.label,
+        unit: p.unit,
+        fullLabel: g.label + " – " + p.label,
+        shortLabel: g.short + " " + p.label
+      });
+    });
+  });
+
+  /* ---------------------------------------------------------------
+     Berechnete (nicht editierbare) Kennwerte. Diese besitzen KEIN
+     Formularfeld, sondern werden aus vorhandenen Eingabewerten
+     abgeleitet und ausschließlich in Datenübersicht, Statistik,
+     Korrelationsmatrix, Diagrammen und CSV-Export angezeigt.
+  --------------------------------------------------------------- */
+  var DERIVED_PARAMS = [
+    {
+      key: "ablauf_nanorg",
+      baseKey: "nanorg",
+      group: "ablauf",
+      groupLabel: "Ablauf",
+      label: "Σ N anorg.",
+      unit: "mg/L",
+      fullLabel: "Ablauf – Σ N anorg. (berechnet: NH4-N + NO3-N + NO2-N)",
+      shortLabel: "AB Σ N anorg.",
+      compute: function(values){
+        var a = values.ablauf_nh4, b = values.ablauf_no3, c = values.ablauf_no2;
+        if(a === null || a === undefined || b === null || b === undefined || c === null || c === undefined) return null;
+        return a + b + c;
+      }
+    }
+  ];
+
+  /* Frachtberechnung (kg/d) für CSB, TOC, TNb und P ges. an allen drei
+     Messstellen. Formel: Fracht [kg/d] = Konzentration [mg/L] × Abwasser-
+     menge [m³/d] / 1000 (da 1 mg/L = 1 g/m³, und 1 kg = 1000 g).
+     Da aktuell nur im Ablauf eine Abwassermenge erfasst wird, wird diese
+     Ablauf-Menge als tägliche Durchflussgröße für die Frachtberechnung an
+     ALLEN drei Messstellen verwendet (Zulauf, ZBR und Ablauf haben unter
+     stationären Bedingungen näherungsweise denselben Durchfluss). */
+  var FRACHT_FLOW_KEY = "ablauf_menge";
+  var FRACHT_BASES = [
+    { base:"csb",  label:"CSB" },
+    { base:"toc",  label:"TOC" },
+    { base:"nges", label:"TNb" },
+    { base:"pges", label:"P ges." }
+  ];
+  GROUPS.forEach(function(g){
+    FRACHT_BASES.forEach(function(fb){
+      var concKey = g.key + "_" + fb.base;
+      if(!PARAMS.some(function(p){ return p.key === concKey; })) return;
+      DERIVED_PARAMS.push({
+        key: g.key + "_" + fb.base + "_fracht",
+        baseKey: fb.base + "_fracht",
+        group: g.key,
+        groupLabel: g.label,
+        label: "Fracht " + fb.label,
+        unit: "kg/d",
+        fullLabel: g.label + " – Fracht " + fb.label + " (berechnet: " + fb.label + " [" + g.label + "] × Abwassermenge Ablauf ÷ 1000)",
+        shortLabel: g.short + " Fracht " + fb.label,
+        compute: (function(concKey, flowKey){
+          return function(values){
+            var c = values[concKey], q = values[flowKey];
+            if(c === null || c === undefined || q === null || q === undefined) return null;
+            return (c * q) / 1000;
+          };
+        })(concKey, FRACHT_FLOW_KEY)
+      });
+    });
+  });
+
+  var DERIVED_PARAMS_BY_KEY = {};
+  DERIVED_PARAMS.forEach(function(d){ DERIVED_PARAMS_BY_KEY[d.key] = d; });
+
+  function getValueByKey(entry, key){
+    var d = DERIVED_PARAMS_BY_KEY[key];
+    if(d) return d.compute(entry.values);
+    return entry.values[key];
+  }
+
+  // Anzeige-Reihenfolge je Messstelle: erst die editierbaren Parameter dieser
+  // Messstelle, danach deren berechnete Kennwerte (z. B. Σ N anorg. nach den
+  // drei Ablauf-Stickstofffraktionen). Wird für Tabelle, Statistik,
+  // Korrelationsmatrix, Auswahllisten und CSV-Export verwendet.
+  var DISPLAY_PARAMS = [];
+  GROUPS.forEach(function(g){
+    PARAMS.filter(function(p){ return p.group === g.key; }).forEach(function(p){ DISPLAY_PARAMS.push(p); });
+    DERIVED_PARAMS.filter(function(d){ return d.group === g.key; }).forEach(function(d){ DISPLAY_PARAMS.push(d); });
+  });
+
+  var SOURCE_LABEL = { klaeranlage:"Kläranlage", indirekteinleiter:"Indirekteinleiter" };
+  var STORAGE_KEY = "messverbund_entries_v1";
+
+  /* ---------------------------------------------------------------
+     Storage
+  --------------------------------------------------------------- */
+  function loadEntries(){
+    try{
+      var raw = window.localStorage.getItem(STORAGE_KEY);
+      if(!raw) return [];
+      var parsed = JSON.parse(raw);
+      if(!Array.isArray(parsed)) return [];
+      return parsed;
+    }catch(e){
+      console.error("Fehler beim Laden der Daten:", e);
+      return [];
+    }
+  }
+  function saveEntries(entries){
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  }
+
+  var STATE = { entries: loadEntries() };
+
+  function makeId(entry){
+    return [entry.source, entry.date, entry.time].join("|");
+  }
+
+  /* De-dupe + merge: neue Einträge überschreiben Duplikate (gleiche Quelle+Datum+Zeit) nicht,
+     sie werden übersprungen, außer sie sind inhaltlich neu (siehe importEntries). */
+  function upsertEntry(entry){
+    entry.id = makeId(entry);
+    var idx = STATE.entries.findIndex(function(e){ return e.id === entry.id; });
+    if(idx >= 0){ STATE.entries[idx] = entry; }
+    else { STATE.entries.push(entry); }
+    STATE.entries.sort(function(a,b){ return (a.date+a.time).localeCompare(b.date+b.time); });
+    saveEntries(STATE.entries);
+  }
+
+  function importEntries(newEntries){
+    var added=0, skipped=0, updated=0;
+    newEntries.forEach(function(e){
+      if(!e || !e.source || !e.date || !e.time) { skipped++; return; }
+      var id = makeId(e);
+      var idx = STATE.entries.findIndex(function(x){ return x.id === id; });
+      if(idx >= 0){
+        // identisch? dann überspringen, sonst aktualisieren
+        var existing = JSON.stringify(STATE.entries[idx].values);
+        var incoming = JSON.stringify(e.values||{});
+        if(existing === incoming){ skipped++; }
+        else { e.id = id; STATE.entries[idx] = e; updated++; }
+      } else {
+        e.id = id;
+        STATE.entries.push(e);
+        added++;
+      }
+    });
+    STATE.entries.sort(function(a,b){ return (a.date+a.time).localeCompare(b.date+b.time); });
+    saveEntries(STATE.entries);
+    return { added:added, skipped:skipped, updated:updated };
+  }
+
+  function deleteEntry(id){
+    STATE.entries = STATE.entries.filter(function(e){ return e.id !== id; });
+    saveEntries(STATE.entries);
+  }
+
+  function wipeAllEntries(){
+    STATE.entries = [];
+    saveEntries(STATE.entries);
+  }
+
+  /* ---------------------------------------------------------------
+     Validierung
+  --------------------------------------------------------------- */
+  function numOrNull(v){
+    if(v === "" || v === null || v === undefined) return null;
+    if(typeof v === "string") v = v.trim();
+    var n = Number(v);
+    if(!isNaN(n) && v !== "") return n;
+    // Deutsches Zahlenformat abfangen (z. B. aus Excel-CSV-Export): "7,2" oder "1.234,5"
+    if(typeof v === "string" && /^-?\d{1,3}(\.\d{3})*,\d+$/.test(v)){
+      n = Number(v.replace(/\./g,"").replace(",", "."));
+      return isNaN(n) ? null : n;
+    }
+    if(typeof v === "string" && /^-?\d+,\d+$/.test(v)){
+      n = Number(v.replace(",", "."));
+      return isNaN(n) ? null : n;
+    }
+    return null;
+  }
+
+  function validateEntry(entry){
+    var errors = [];
+    if(!entry.date) errors.push("Datum fehlt.");
+    if(!entry.time) errors.push("Uhrzeit fehlt.");
+    PARAMS.forEach(function(p){
+      var v = entry.values[p.key];
+      if(v === null || v === undefined) return;
+      if(p.baseKey === "ph"){
+        if(v < 0 || v > 14) errors.push(p.fullLabel + " muss zwischen 0 und 14 liegen.");
+      } else if(p.baseKey !== "temp" && v < 0){
+        errors.push(p.fullLabel + " darf nicht negativ sein.");
+      }
+    });
+    var hasAnyValue = PARAMS.some(function(p){ return entry.values[p.key] !== null && entry.values[p.key] !== undefined; });
+    if(!hasAnyValue) errors.push("Mindestens ein Messwert muss angegeben werden.");
+    return errors;
+  }
+
+  /* ---------------------------------------------------------------
+     Statistik: Pearson-Korrelation, Min/Mittel/Max
+  --------------------------------------------------------------- */
+  function pearson(pairs){
+    // pairs: Array von [x,y] mit numerischen Werten (bereits gefiltert, keine null)
+    var n = pairs.length;
+    if(n < 3) return null;
+    var sumX=0,sumY=0;
+    for(var i=0;i<n;i++){ sumX+=pairs[i][0]; sumY+=pairs[i][1]; }
+    var meanX=sumX/n, meanY=sumY/n;
+    var num=0, denX=0, denY=0;
+    for(i=0;i<n;i++){
+      var dx=pairs[i][0]-meanX, dy=pairs[i][1]-meanY;
+      num += dx*dy;
+      denX += dx*dx;
+      denY += dy*dy;
+    }
+    if(denX === 0 || denY === 0) return null; // keine Varianz -> Korrelation nicht definiert
+    var r = num / Math.sqrt(denX*denY);
+    if(r > 1) r = 1;
+    if(r < -1) r = -1;
+    return { r:r, n:n };
+  }
+
+  function collectPairs(entries, keyX, keyY){
+    var pairs = [];
+    entries.forEach(function(e){
+      var x = getValueByKey(e, keyX), y = getValueByKey(e, keyY);
+      if(x !== null && x !== undefined && y !== null && y !== undefined){
+        pairs.push([x, y]);
+      }
+    });
+    return pairs;
+  }
+
+  function basicStats(entries, key){
+    var vals = entries.map(function(e){ return getValueByKey(e, key); }).filter(function(v){ return v !== null && v !== undefined; });
+    if(vals.length === 0) return null;
+    var min = Math.min.apply(null, vals);
+    var max = Math.max.apply(null, vals);
+    var mean = vals.reduce(function(a,b){return a+b;},0) / vals.length;
+    return { n:vals.length, min:min, mean:mean, max:max };
+  }
+
+  function fmtNum(n, digits){
+    if(n === null || n === undefined || isNaN(n)) return "–";
+    if(digits === undefined) digits = 2;
+    return n.toLocaleString("de-DE", { minimumFractionDigits:0, maximumFractionDigits:digits });
+  }
+
+  /* ---------------------------------------------------------------
+     CSV Ex-/Import
+     Export enthält zusätzlich die berechneten Kennwerte (z. B. Σ N anorg.)
+     als informative, schreibgeschützte Spalten. Beim Import werden nur
+     die editierbaren PARAMS-Spalten eingelesen - berechnete Spalten
+     werden ignoriert und beim nächsten Öffnen ohnehin neu berechnet.
+  --------------------------------------------------------------- */
+  var CSV_COLUMNS = ["source","date","time"].concat(DISPLAY_PARAMS.map(function(p){return p.key;})).concat(["note"]);
+
+  function csvEscape(val){
+    val = (val === null || val === undefined) ? "" : String(val);
+    if(/[",;\n]/.test(val)){
+      val = '"' + val.replace(/"/g,'""') + '"';
+    }
+    return val;
+  }
+
+  function entriesToCsv(entries){
+    var lines = [CSV_COLUMNS.join(";")];
+    entries.forEach(function(e){
+      var row = [e.source, e.date, e.time];
+      DISPLAY_PARAMS.forEach(function(p){ var v = getValueByKey(e, p.key); row.push(v === null || v===undefined ? "" : v); });
+      row.push(e.note || "");
+      lines.push(row.map(csvEscape).join(";"));
+    });
+    return lines.join("\n");
+  }
+
+  function parseCsvLine(line, delim){
+    var result = [];
+    var cur = "";
+    var inQuotes = false;
+    for(var i=0;i<line.length;i++){
+      var c = line[i];
+      if(inQuotes){
+        if(c === '"'){
+          if(line[i+1] === '"'){ cur += '"'; i++; }
+          else { inQuotes = false; }
+        } else { cur += c; }
+      } else {
+        if(c === '"'){ inQuotes = true; }
+        else if(c === delim){ result.push(cur); cur = ""; }
+        else { cur += c; }
+      }
+    }
+    result.push(cur);
+    return result;
+  }
+
+  function csvToEntries(text){
+    var rows = text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n").filter(function(l){ return l.trim() !== ""; });
+    if(rows.length < 2) return [];
+    var delim = rows[0].indexOf(";") >= 0 ? ";" : ",";
+    var header = parseCsvLine(rows[0], delim).map(function(h){ return h.trim(); });
+    var entries = [];
+    for(var r=1;r<rows.length;r++){
+      var cols = parseCsvLine(rows[r], delim);
+      var obj = {};
+      header.forEach(function(h, idx){ obj[h] = cols[idx] !== undefined ? cols[idx] : ""; });
+      var values = {};
+      PARAMS.forEach(function(p){ values[p.key] = numOrNull(obj[p.key]); });
+      entries.push({
+        source: obj.source === "indirekteinleiter" ? "indirekteinleiter" : "klaeranlage",
+        date: obj.date || "",
+        time: obj.time || "",
+        values: values,
+        note: obj.note || ""
+      });
+    }
+    return entries;
+  }
+
+  /* ---------------------------------------------------------------
+     Canvas-Diagramme (ohne externe Bibliotheken)
+  --------------------------------------------------------------- */
+  function clearCanvas(ctx, canvas){
+    if(!ctx) return;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+  }
+
+  function drawAxes(ctx, canvas, pad){
+    ctx.strokeStyle = "#2c4051";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad.l, pad.t);
+    ctx.lineTo(pad.l, canvas.height - pad.b);
+    ctx.lineTo(canvas.width - pad.r, canvas.height - pad.b);
+    ctx.stroke();
+  }
+
+  function drawScatter(canvas, points, labelX, labelY){
+    var ctx = canvas.getContext && canvas.getContext("2d");
+    if(!ctx) return;
+    clearCanvas(ctx, canvas);
+    var pad = { l:60, r:24, t:20, b:44 };
+    if(points.length === 0){
+      ctx.fillStyle = "#8ea3b0";
+      ctx.font = "13px sans-serif";
+      ctx.fillText("Keine Wertepaare für diese Parameterauswahl vorhanden.", pad.l, canvas.height/2);
+      return;
+    }
+    var xs = points.map(function(p){return p[0];});
+    var ys = points.map(function(p){return p[1];});
+    var minX = Math.min.apply(null, xs), maxX = Math.max.apply(null, xs);
+    var minY = Math.min.apply(null, ys), maxY = Math.max.apply(null, ys);
+    if(minX === maxX){ minX -= 1; maxX += 1; }
+    if(minY === maxY){ minY -= 1; maxY += 1; }
+    var spanX = maxX - minX, spanY = maxY - minY;
+    var mx = spanX*0.08, my = spanY*0.08;
+    minX-=mx; maxX+=mx; minY-=my; maxY+=my;
+
+    drawAxes(ctx, canvas, pad);
+
+    function px(x){ return pad.l + (x-minX)/(maxX-minX) * (canvas.width-pad.l-pad.r); }
+    function py(y){ return canvas.height-pad.b - (y-minY)/(maxY-minY) * (canvas.height-pad.t-pad.b); }
+
+    ctx.fillStyle = "#2fb6a6";
+    points.forEach(function(p){
+      ctx.beginPath();
+      ctx.arc(px(p[0]), py(p[1]), 4, 0, Math.PI*2);
+      ctx.globalAlpha = 0.75;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    });
+
+    // Regressionsgerade (einfache lineare Regression), nur wenn Varianz vorhanden
+    var n = points.length;
+    var sumX=0,sumY=0; points.forEach(function(p){sumX+=p[0];sumY+=p[1];});
+    var meanX=sumX/n, meanY=sumY/n;
+    var num=0, den=0;
+    points.forEach(function(p){ num += (p[0]-meanX)*(p[1]-meanY); den += (p[0]-meanX)*(p[0]-meanX); });
+    if(den !== 0 && n >= 2){
+      var slope = num/den;
+      var intercept = meanY - slope*meanX;
+      ctx.strokeStyle = "#d98f3b";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(px(minX), py(slope*minX+intercept));
+      ctx.lineTo(px(maxX), py(slope*maxX+intercept));
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = "#8ea3b0";
+    ctx.font = "12px sans-serif";
+    ctx.fillText(labelX, canvas.width/2 - 20, canvas.height - 12);
+    ctx.save();
+    ctx.translate(16, canvas.height/2 + 20);
+    ctx.rotate(-Math.PI/2);
+    ctx.fillText(labelY, 0, 0);
+    ctx.restore();
+  }
+
+  function drawTimeSeries(canvas, seriesArr){
+    var ctx = canvas.getContext && canvas.getContext("2d");
+    if(!ctx) return;
+    clearCanvas(ctx, canvas);
+    var pad = { l:60, r:24, t:20, b:44 };
+    var allPoints = [];
+    seriesArr.forEach(function(s){ allPoints = allPoints.concat(s.points); });
+    if(allPoints.length === 0){
+      ctx.fillStyle = "#8ea3b0";
+      ctx.font = "13px sans-serif";
+      ctx.fillText("Keine Werte für diesen Parameter vorhanden.", pad.l, canvas.height/2);
+      return;
+    }
+    var xs = allPoints.map(function(p){return p.x;});
+    var ys = allPoints.map(function(p){return p.y;});
+    var minX = Math.min.apply(null, xs), maxX = Math.max.apply(null, xs);
+    var minY = Math.min.apply(null, ys), maxY = Math.max.apply(null, ys);
+    if(minX === maxX){ minX -= 1; maxX += 1; }
+    if(minY === maxY){ minY -= 1; maxY += 1; }
+    var spanY = maxY-minY; var my = spanY*0.1; minY -= my; maxY += my;
+
+    drawAxes(ctx, canvas, pad);
+    function px(x){ return pad.l + (x-minX)/(maxX-minX) * (canvas.width-pad.l-pad.r); }
+    function py(y){ return canvas.height-pad.b - (y-minY)/(maxY-minY) * (canvas.height-pad.t-pad.b); }
+
+    seriesArr.forEach(function(s){
+      if(s.points.length === 0) return;
+      var sorted = s.points.slice().sort(function(a,b){return a.x-b.x;});
+      ctx.strokeStyle = s.color;
+      ctx.fillStyle = s.color;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      sorted.forEach(function(p,i){
+        var X=px(p.x), Y=py(p.y);
+        if(i===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y);
+      });
+      ctx.stroke();
+      sorted.forEach(function(p){
+        ctx.beginPath();
+        ctx.arc(px(p.x), py(p.y), 3, 0, Math.PI*2);
+        ctx.fill();
+      });
+    });
+
+    ctx.fillStyle = "#8ea3b0";
+    ctx.font = "12px sans-serif";
+    ctx.fillText("Zeit", canvas.width/2 - 12, canvas.height - 12);
+  }
+
+  /* ---------------------------------------------------------------
+     Rendering: Navigation
+  --------------------------------------------------------------- */
+  function switchView(view){
+    document.querySelectorAll(".view").forEach(function(el){ el.classList.add("hidden"); });
+    document.getElementById("view-"+view).classList.remove("hidden");
+    document.querySelectorAll(".navbtn").forEach(function(b){
+      b.classList.toggle("active", b.getAttribute("data-view") === view);
+    });
+    if(view === "uebersicht") renderTable();
+    if(view === "analyse") renderAnalyse();
+  }
+  document.querySelectorAll(".navbtn").forEach(function(btn){
+    btn.addEventListener("click", function(){ switchView(btn.getAttribute("data-view")); });
+  });
+
+  function updateSideCount(){
+    document.getElementById("sideCount").textContent = STATE.entries.length;
+  }
+
+  /* ---------------------------------------------------------------
+     Eingabe-Formular
+  --------------------------------------------------------------- */
+  var form = document.getElementById("entryForm");
+  var formMsg = document.getElementById("formMsg");
+
+  function showMsg(el, text, isError){
+    el.textContent = text;
+    el.classList.add("show");
+    el.classList.toggle("error", !!isError);
+    window.clearTimeout(el._t);
+    el._t = window.setTimeout(function(){ el.classList.remove("show"); }, 5000);
+  }
+
+  function setDefaultDateTime(){
+    var now = new Date();
+    document.getElementById("f_date").value = now.toISOString().slice(0,10);
+    document.getElementById("f_time").value = now.toTimeString().slice(0,5);
+  }
+  setDefaultDateTime();
+
+  function readForm(){
+    var values = {};
+    PARAMS.forEach(function(p){ values[p.key] = numOrNull(document.getElementById("f_"+p.key).value); });
+    return {
+      source: document.getElementById("f_source").value,
+      date: document.getElementById("f_date").value,
+      time: document.getElementById("f_time").value,
+      values: values,
+      note: document.getElementById("f_note").value.trim()
+    };
+  }
+
+  form.addEventListener("submit", function(ev){
+    ev.preventDefault();
+    var entry = readForm();
+    var errors = validateEntry(entry);
+    if(errors.length){
+      showMsg(formMsg, errors.join(" "), true);
+      return;
+    }
+    upsertEntry(entry);
+    updateSideCount();
+    showMsg(formMsg, "Datensatz gespeichert (" + SOURCE_LABEL[entry.source] + ", " + entry.date + " " + entry.time + ").", false);
+    form.reset();
+    document.getElementById("f_source").value = entry.source;
+    setDefaultDateTime();
+  });
+
+  document.getElementById("resetForm").addEventListener("click", function(){
+    form.reset();
+    setDefaultDateTime();
+  });
+
+  /* ---------------------------------------------------------------
+     Datenübersicht
+  --------------------------------------------------------------- */
+  function filteredEntries(sourceSel, from, to){
+    return STATE.entries.filter(function(e){
+      if(sourceSel && sourceSel !== "alle" && e.source !== sourceSel) return false;
+      if(from && e.date < from) return false;
+      if(to && e.date > to) return false;
+      return true;
+    });
+  }
+
+  function renderTableHead(){
+    var head = document.getElementById("dataTableHead");
+    var row1 = document.createElement("tr");
+    ["Quelle","Datum","Zeit"].forEach(function(t){
+      var th = document.createElement("th"); th.textContent = t; th.rowSpan = 2; row1.appendChild(th);
+    });
+    GROUPS.forEach(function(g){
+      var colCount = DISPLAY_PARAMS.filter(function(p){ return p.group === g.key; }).length;
+      var th = document.createElement("th");
+      th.textContent = g.label;
+      th.colSpan = colCount;
+      th.style.textAlign = "center";
+      th.style.borderLeft = "1px solid var(--line)";
+      row1.appendChild(th);
+    });
+    ["Bemerkung",""].forEach(function(t){
+      var th = document.createElement("th"); th.textContent = t; th.rowSpan = 2; row1.appendChild(th);
+    });
+    var row2 = document.createElement("tr");
+    var currentGroup = DISPLAY_PARAMS.length ? DISPLAY_PARAMS[0].group : null;
+    DISPLAY_PARAMS.forEach(function(p){
+      var th = document.createElement("th");
+      th.className = "num";
+      th.textContent = p.label + (p.unit ? " (" + p.unit + ")" : "");
+      if(p.compute) th.title = p.fullLabel;
+      if(p.group !== currentGroup){ th.style.borderLeft = "1px solid var(--line)"; currentGroup = p.group; }
+      row2.appendChild(th);
+    });
+    head.innerHTML = "";
+    head.appendChild(row1);
+    head.appendChild(row2);
+  }
+
+  function renderTable(){
+    var sourceSel = document.getElementById("u_source").value;
+    var from = document.getElementById("u_from").value;
+    var to = document.getElementById("u_to").value;
+    var rows = filteredEntries(sourceSel, from, to);
+    var tbody = document.getElementById("dataTableBody");
+    tbody.innerHTML = "";
+    document.getElementById("tableEmpty").classList.toggle("hidden", rows.length !== 0);
+
+    rows.forEach(function(e){
+      var tr = document.createElement("tr");
+      var cells = [];
+      cells.push('<td><span class="tag ' + e.source + '">' + SOURCE_LABEL[e.source] + '</span></td>');
+      cells.push("<td>" + e.date + "</td>");
+      cells.push("<td>" + e.time + "</td>");
+      DISPLAY_PARAMS.forEach(function(p){
+        var v = getValueByKey(e, p.key);
+        cells.push('<td class="num">' + (v !== null && v !== undefined ? fmtNum(v) : "–") + "</td>");
+      });
+      cells.push("<td>" + (e.note ? escapeHtml(e.note) : "") + "</td>");
+      cells.push('<td><button class="btn secondary" data-del="' + e.id + '" style="padding:4px 10px;font-size:12px;">Löschen</button></td>');
+      tr.innerHTML = cells.join("");
+      tbody.appendChild(tr);
+    });
+
+    tbody.querySelectorAll("[data-del]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        if(window.confirm("Diesen Datensatz wirklich löschen?")){
+          deleteEntry(btn.getAttribute("data-del"));
+          updateSideCount();
+          renderTable();
+        }
+      });
+    });
+  }
+
+  function escapeHtml(s){
+    return s.replace(/[&<>"']/g, function(c){
+      return { "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c];
+    });
+  }
+
+  ["u_source","u_from","u_to"].forEach(function(id){
+    document.getElementById(id).addEventListener("change", renderTable);
+  });
+  document.getElementById("u_clearFilter").addEventListener("click", function(){
+    document.getElementById("u_source").value = "alle";
+    document.getElementById("u_from").value = "";
+    document.getElementById("u_to").value = "";
+    renderTable();
+  });
+
+  /* ---------------------------------------------------------------
+     Analyse
+  --------------------------------------------------------------- */
+  function fillParamSelect(sel, defaultIdx){
+    sel.innerHTML = "";
+    GROUPS.forEach(function(g){
+      var groupParams = DISPLAY_PARAMS.filter(function(p){ return p.group === g.key; });
+      if(groupParams.length === 0) return;
+      var og = document.createElement("optgroup");
+      og.label = g.label;
+      groupParams.forEach(function(p){
+        var opt = document.createElement("option");
+        opt.value = p.key;
+        opt.textContent = p.label + (p.unit ? " (" + p.unit + ")" : "");
+        og.appendChild(opt);
+      });
+      sel.appendChild(og);
+    });
+    var flatOptions = sel.querySelectorAll("option");
+    if(flatOptions[defaultIdx]) flatOptions[defaultIdx].selected = true;
+  }
+  fillParamSelect(document.getElementById("a_paramX"), 0);
+  fillParamSelect(document.getElementById("a_paramY"), 1);
+  fillParamSelect(document.getElementById("a_paramT"), 1);
+
+  function corrColor(r){
+    // r in [-1,1]; rot bei -1, neutral (panel) bei 0, teal bei +1
+    var t = Math.abs(r);
+    var base = r >= 0 ? [47,182,166] : [193,85,59];
+    var bg = [29,47,60]; // --panel-2
+    var mix = base.map(function(c,i){ return Math.round(bg[i] + (c-bg[i])*t); });
+    return "rgb(" + mix.join(",") + ")";
+  }
+
+  function renderAnalyse(){
+    var sourceSel = document.getElementById("a_source").value;
+    var from = document.getElementById("a_from").value;
+    var to = document.getElementById("a_to").value;
+    var rows = filteredEntries(sourceSel, from, to);
+
+    var kCount = rows.filter(function(e){return e.source==="klaeranlage";}).length;
+    var iCount = rows.filter(function(e){return e.source==="indirekteinleiter";}).length;
+    document.getElementById("a_basisInfo").innerHTML =
+      "<b>" + rows.length + "</b> Datensätze in der Auswahl · Kläranlage: <b>" + kCount + "</b> · Indirekteinleiter: <b>" + iCount + "</b>";
+
+    // Statistik
+    var statsBody = document.getElementById("statsTableBody");
+    statsBody.innerHTML = "";
+    var anyStat = false;
+    DISPLAY_PARAMS.forEach(function(p){
+      var s = basicStats(rows, p.key);
+      if(!s) return;
+      anyStat = true;
+      var tr = document.createElement("tr");
+      tr.innerHTML = "<td>" + p.fullLabel + (p.unit ? " ("+p.unit+")" : "") + "</td>" +
+        '<td class="num">' + s.n + "</td>" +
+        '<td class="num">' + fmtNum(s.min) + "</td>" +
+        '<td class="num">' + fmtNum(s.mean) + "</td>" +
+        '<td class="num">' + fmtNum(s.max) + "</td>";
+      statsBody.appendChild(tr);
+    });
+    document.getElementById("statsEmpty").classList.toggle("hidden", anyStat);
+
+    // Korrelationsmatrix
+    var corrTable = document.getElementById("corrTable");
+    corrTable.innerHTML = "";
+    var thead = document.createElement("tr");
+    thead.innerHTML = "<th></th>" + DISPLAY_PARAMS.map(function(p){ return '<th title="' + escapeHtml(p.fullLabel) + '">' + p.shortLabel + "</th>"; }).join("");
+    corrTable.appendChild(thead);
+    var anyCorr = false;
+    DISPLAY_PARAMS.forEach(function(pRow){
+      var tr = document.createElement("tr");
+      tr.innerHTML = '<th title="' + escapeHtml(pRow.fullLabel) + '">' + pRow.shortLabel + "</th>";
+      DISPLAY_PARAMS.forEach(function(pCol){
+        var td = document.createElement("td");
+        if(pRow.key === pCol.key){
+          td.textContent = "1.00";
+          td.className = "corrcell";
+          td.style.background = corrColor(1);
+        } else {
+          var pairs = collectPairs(rows, pRow.key, pCol.key);
+          var res = pearson(pairs);
+          if(res){
+            anyCorr = true;
+            td.textContent = res.r.toFixed(2);
+            td.className = "corrcell";
+            td.style.background = corrColor(res.r);
+            td.title = "n = " + res.n;
+          } else {
+            td.textContent = "–";
+            td.style.color = "#8ea3b0";
+          }
+        }
+        tr.appendChild(td);
+      });
+      corrTable.appendChild(tr);
+    });
+    document.getElementById("corrEmpty").classList.toggle("hidden", anyCorr);
+
+    renderScatter(rows);
+    renderTimeSeries(rows);
+  }
+
+  function renderScatter(rows){
+    var kx = document.getElementById("a_paramX").value;
+    var ky = document.getElementById("a_paramY").value;
+    var pairs = collectPairs(rows, kx, ky);
+    var labelX = DISPLAY_PARAMS.find(function(p){return p.key===kx;});
+    var labelY = DISPLAY_PARAMS.find(function(p){return p.key===ky;});
+    drawScatter(document.getElementById("scatterCanvas"), pairs,
+      labelX.fullLabel + (labelX.unit?" ("+labelX.unit+")":""),
+      labelY.fullLabel + (labelY.unit?" ("+labelY.unit+")":""));
+    var res = pearson(pairs);
+    document.getElementById("scatterReadout").innerHTML = res
+      ? "Korrelationskoeffizient r = <b>" + res.r.toFixed(3) + "</b> · n = <b>" + res.n + "</b> Wertepaare"
+      : "Nicht genügend vollständige Wertepaare (mind. 3) für diese Parameterkombination.";
+  }
+
+  function renderTimeSeries(rows){
+    var kt = document.getElementById("a_paramT").value;
+    function toSeries(source, color){
+      var pts = rows.filter(function(e){ return e.source===source; })
+        .map(function(e){ return { x: new Date(e.date+"T"+(e.time||"00:00")).getTime(), y: getValueByKey(e, kt) }; })
+        .filter(function(pt){ return pt.y !== null && pt.y !== undefined; });
+      return { points: pts, color: color };
+    }
+    drawTimeSeries(document.getElementById("timeCanvas"), [
+      toSeries("klaeranlage", "#2fb6a6"),
+      toSeries("indirekteinleiter", "#d98f3b")
+    ]);
+  }
+
+  ["a_source","a_from","a_to","a_paramX","a_paramY","a_paramT"].forEach(function(id){
+    document.getElementById(id).addEventListener("change", renderAnalyse);
+  });
+
+  /* ---------------------------------------------------------------
+     Datenaustausch: Export / Import / Löschen
+  --------------------------------------------------------------- */
+  function downloadFile(filename, content, mime){
+    var blob = new Blob([content], { type: mime });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  document.getElementById("exportJson").addEventListener("click", function(){
+    downloadFile("messdaten_export_" + todayStr() + ".json", JSON.stringify(STATE.entries, null, 2), "application/json");
+  });
+  document.getElementById("exportCsv").addEventListener("click", function(){
+    downloadFile("messdaten_export_" + todayStr() + ".csv", entriesToCsv(STATE.entries), "text/csv");
+  });
+  function todayStr(){ return new Date().toISOString().slice(0,10); }
+
+  var importFile = document.getElementById("importFile");
+  var importBtn = document.getElementById("importBtn");
+  var importMsg = document.getElementById("importMsg");
+  var pendingFile = null;
+  importFile.addEventListener("change", function(){
+    pendingFile = importFile.files[0] || null;
+    importBtn.disabled = !pendingFile;
+  });
+  importBtn.addEventListener("click", function(){
+    if(!pendingFile) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      var text = String(reader.result);
+      var newEntries = [];
+      try{
+        if(pendingFile.name.toLowerCase().endsWith(".json")){
+          var parsed = JSON.parse(text);
+          newEntries = Array.isArray(parsed) ? parsed : [];
+          newEntries = newEntries.map(function(e){
+            var values = {};
+            PARAMS.forEach(function(p){ values[p.key] = numOrNull(e.values ? e.values[p.key] : null); });
+            return { source: e.source==="indirekteinleiter"?"indirekteinleiter":"klaeranlage", date:e.date||"", time:e.time||"", values:values, note:e.note||"" };
+          });
+        } else {
+          newEntries = csvToEntries(text);
+        }
+      }catch(err){
+        showMsg(importMsg, "Datei konnte nicht gelesen werden: " + err.message, true);
+        return;
+      }
+      newEntries = newEntries.filter(function(e){ return e.date && e.time; });
+      var result = importEntries(newEntries);
+      updateSideCount();
+      renderTable();
+      showMsg(importMsg, "Import abgeschlossen: " + result.added + " neu, " + result.updated + " aktualisiert, " + result.skipped + " unverändert/übersprungen.", false);
+      importFile.value = "";
+      pendingFile = null;
+      importBtn.disabled = true;
+    };
+    reader.onerror = function(){
+      showMsg(importMsg, "Datei konnte nicht gelesen werden.", true);
+    };
+    reader.readAsText(pendingFile, "UTF-8");
+  });
+
+  document.getElementById("wipeAll").addEventListener("click", function(){
+    if(window.confirm("Wirklich ALLE lokal gespeicherten Datensätze löschen? Dies kann nicht rückgängig gemacht werden.")){
+      wipeAllEntries();
+      updateSideCount();
+      renderTable();
+      renderAnalyse();
+    }
+  });
+
+  /* ---------------------------------------------------------------
+     Init
+  --------------------------------------------------------------- */
+  updateSideCount();
+  renderTableHead();
+  renderTable();
+  renderAnalyse();
+
+  // Für automatisierte Tests (Node/Headless) exponiert:
+  window.__APP__ = {
+    PARAMS: PARAMS, GROUPS: GROUPS, DERIVED_PARAMS: DERIVED_PARAMS, DISPLAY_PARAMS: DISPLAY_PARAMS,
+    getValueByKey: getValueByKey, pearson: pearson, collectPairs: collectPairs, basicStats: basicStats,
+    entriesToCsv: entriesToCsv, csvToEntries: csvToEntries, parseCsvLine: parseCsvLine,
+    validateEntry: validateEntry, numOrNull: numOrNull, importEntries: importEntries,
+    makeId: makeId, STATE: STATE
+  };
+})();
+</script>
+</body>
+</html>

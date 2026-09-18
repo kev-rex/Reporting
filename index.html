@@ -246,6 +246,15 @@
   .hidden{display:none !important;}
   .helpbox{font-size:12.5px;color:var(--text-muted);border:1px dashed var(--line);padding:12px 14px;margin-bottom:18px;}
   .helpbox code{font-family:var(--mono);background:var(--panel-2);padding:1px 5px;}
+
+  .conn-banner{
+    position:fixed; left:0; right:0; bottom:0; z-index:50;
+    padding:10px 20px; font-size:13px; text-align:center;
+    display:none;
+  }
+  .conn-banner.show{display:block;}
+  .conn-banner.connecting{background:#3a4a2f; color:#d7e8c4; border-top:1px solid #5a7a3f;}
+  .conn-banner.error{background:#3a1f1a; color:#f3c9bd; border-top:1px solid var(--neg);}
 </style>
 </head>
 <body>
@@ -262,7 +271,7 @@
     <button class="navbtn" data-view="austausch">Datenaustausch</button>
     <div class="side-foot">
       Datensätze: <span class="count" id="sideCount">0</span><br>
-      Lokale Speicherung im Browser
+      Zentral in Firebase gespeichert
     </div>
   </nav>
 
@@ -410,7 +419,7 @@
           </fieldset>
 
           <div class="btnrow">
-            <button type="submit" class="btn">Datensatz speichern</button>
+            <button type="submit" class="btn" id="entrySubmitBtn">Datensatz speichern</button>
             <button type="button" class="btn secondary" id="resetForm">Formular leeren</button>
           </div>
           <div class="msg" id="formMsg"></div>
@@ -546,19 +555,21 @@
       <div class="pageheader">
         <div>
           <h1>Datenaustausch</h1>
-          <p>Messwerte zwischen Kläranlage und Indirekteinleiter zusammenführen.</p>
+          <p>Sicherung, Massenimport und vollständiges Löschen der zentral in Firebase gespeicherten Daten.</p>
         </div>
       </div>
 
       <div class="helpbox">
-        Die App speichert Daten lokal im Browser der jeweiligen Seite (Kläranlage / Indirekteinleiter). Um beide
-        Datenbestände gemeinsam auszuwerten, exportiert jede Seite ihre Daten als Datei und die andere Seite
-        importiert diese Datei zusätzlich. Beim Import werden Datensätze anhand von Quelle, Datum, Uhrzeit
-        zusammengeführt — bereits vorhandene Datensätze werden nicht doppelt angelegt.
+        Alle Messdaten werden zentral in einer Cloud-Firestore-Datenbank gespeichert und automatisch in Echtzeit
+        mit allen Nutzern synchronisiert — Kläranlage und Indirekteinleiter sehen dieselben Daten, ohne dass Dateien
+        manuell ausgetauscht werden müssen. Export und Import auf dieser Seite dienen als Sicherung (Backup) bzw.
+        um größere Datenmengen (z. B. historische Messreihen) auf einmal einzuspielen. Beim Import werden
+        Datensätze anhand von Quelle, Datum und Uhrzeit zusammengeführt — bereits vorhandene, identische
+        Datensätze werden nicht doppelt angelegt.
       </div>
 
       <div class="panel">
-        <h2>Export</h2>
+        <h2>Export (Sicherung)</h2>
         <div class="btnrow">
           <button class="btn secondary" id="exportJson">Als JSON exportieren</button>
           <button class="btn secondary" id="exportCsv">Als CSV exportieren</button>
@@ -566,7 +577,7 @@
       </div>
 
       <div class="panel">
-        <h2>Import</h2>
+        <h2>Import (Massenimport)</h2>
         <div class="field">
           <label for="importFile">JSON- oder CSV-Datei auswählen</label>
           <input type="file" id="importFile" accept=".json,.csv,text/csv,application/json">
@@ -579,13 +590,96 @@
 
       <div class="panel">
         <h2>Alle Daten löschen</h2>
-        <p style="color:var(--text-muted);font-size:13px;margin-top:0;">Entfernt alle lokal gespeicherten Datensätze unwiderruflich aus diesem Browser.</p>
+        <p style="color:var(--text-muted);font-size:13px;margin-top:0;">Entfernt alle Datensätze unwiderruflich aus der zentralen Firebase-Datenbank — betrifft alle Nutzer, nicht nur diesen Browser.</p>
         <button class="btn danger" id="wipeAll">Alle Datensätze löschen</button>
       </div>
     </section>
 
   </main>
 </div>
+
+<div id="connBanner" class="conn-banner" role="status"></div>
+
+<script type="module">
+  // ---------------------------------------------------------------
+  // Firebase / Cloud Firestore Anbindung.
+  // Speichert Messdaten zentral in der Cloud statt nur lokal im
+  // Browser, sodass Kläranlage und Indirekteinleiter automatisch
+  // dieselben, live synchronisierten Daten sehen.
+  // ---------------------------------------------------------------
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+  import {
+    getFirestore, collection, doc, setDoc, deleteDoc, getDocs,
+    onSnapshot, writeBatch, enableIndexedDbPersistence
+  } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCxV_w1P9OV-4bSy-opx-HlVMT_5sy4Mtc",
+    authDomain: "reporting-e1044.firebaseapp.com",
+    projectId: "reporting-e1044",
+    storageBucket: "reporting-e1044.firebasestorage.app",
+    messagingSenderId: "609288857415",
+    appId: "1:609288857415:web:c62fbacf922516fbd0ce62"
+  };
+
+  const COLLECTION = "messwerte";
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const listeners = [];
+
+  // Offline-Persistenz: Eingaben funktionieren auch bei kurzzeitig fehlender
+  // Internetverbindung (z. B. auf dem Anlagengelände) und werden automatisch
+  // synchronisiert, sobald wieder eine Verbindung besteht. Schlägt dies fehl
+  // (z. B. mehrere offene Tabs), läuft die App trotzdem weiter - nur ohne
+  // Offline-Zwischenspeicher.
+  enableIndexedDbPersistence(db).catch(function(err){
+    console.warn("Offline-Persistenz nicht verfügbar:", err && err.code);
+  });
+
+  onSnapshot(
+    collection(db, COLLECTION),
+    function(snapshot){
+      var entries = snapshot.docs.map(function(d){ return d.data(); });
+      listeners.forEach(function(fn){ fn(entries, null); });
+    },
+    function(error){
+      listeners.forEach(function(fn){ fn(null, error); });
+    }
+  );
+
+  function chunk(arr, size){
+    var out = [];
+    for(var i=0;i<arr.length;i+=size) out.push(arr.slice(i, i+size));
+    return out;
+  }
+
+  window.MessDB = {
+    onChange: function(fn){ listeners.push(fn); },
+    upsert: function(entry){ return setDoc(doc(db, COLLECTION, entry.id), entry); },
+    remove: function(id){ return deleteDoc(doc(db, COLLECTION, id)); },
+    wipeAll: function(){
+      return getDocs(collection(db, COLLECTION)).then(function(snap){
+        var refs = []; snap.forEach(function(d){ refs.push(d.ref); });
+        var batches = chunk(refs, 400).map(function(group){
+          var b = writeBatch(db);
+          group.forEach(function(ref){ b.delete(ref); });
+          return b.commit();
+        });
+        return Promise.all(batches);
+      });
+    },
+    batchUpsert: function(entries){
+      var batches = chunk(entries, 400).map(function(group){
+        var b = writeBatch(db);
+        group.forEach(function(e){ b.set(doc(db, COLLECTION, e.id), e); });
+        return b.commit();
+      });
+      return Promise.all(batches);
+    }
+  };
+
+  window.dispatchEvent(new Event("messdb-ready"));
+</script>
 
 <script>
 (function(){
@@ -724,75 +818,104 @@
   });
 
   var SOURCE_LABEL = { klaeranlage:"Kläranlage", indirekteinleiter:"Indirekteinleiter" };
-  var STORAGE_KEY = "messverbund_entries_v1";
 
   /* ---------------------------------------------------------------
-     Storage
+     Storage: Cloud Firestore (zentral, live synchronisiert).
+     window.MessDB wird vom Firebase-Modul-Script weiter oben bereitgestellt.
+     STATE.entries wird ausschließlich über den onChange-Listener aktuell
+     gehalten - alle Schreiboperationen (upsert/delete/wipe/import) laufen
+     asynchron über window.MessDB und lösen danach automatisch ein Update
+     von STATE.entries samt Neuzeichnen der Ansichten aus.
   --------------------------------------------------------------- */
-  function loadEntries(){
-    try{
-      var raw = window.localStorage.getItem(STORAGE_KEY);
-      if(!raw) return [];
-      var parsed = JSON.parse(raw);
-      if(!Array.isArray(parsed)) return [];
-      return parsed;
-    }catch(e){
-      console.error("Fehler beim Laden der Daten:", e);
-      return [];
-    }
-  }
-  function saveEntries(entries){
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  var STATE = { entries: [], ready: false, error: null };
+
+  function sortEntries(){
+    STATE.entries.sort(function(a,b){ return (a.date+a.time).localeCompare(b.date+b.time); });
   }
 
-  var STATE = { entries: loadEntries() };
+  function showConnBanner(kind, text){
+    var el = document.getElementById("connBanner");
+    el.textContent = text;
+    el.className = "conn-banner show " + kind;
+  }
+  function hideConnBanner(){
+    var el = document.getElementById("connBanner");
+    el.className = "conn-banner";
+  }
+  function setControlsEnabled(enabled){
+    ["entrySubmitBtn","importBtn","wipeAll"].forEach(function(id){
+      var el = document.getElementById(id);
+      if(el) el.disabled = !enabled || (id === "importBtn" && !pendingFileRef.current);
+    });
+  }
+  // kleiner Hilfsverweis, damit setControlsEnabled auch den Datei-Auswahlstatus
+  // des Import-Buttons berücksichtigen kann (siehe weiter unten gesetzt)
+  var pendingFileRef = { current: false };
+
+  function startFirestoreSync(){
+    showConnBanner("connecting", "Verbindung zu Firebase wird hergestellt …");
+    setControlsEnabled(false);
+    window.MessDB.onChange(function(entries, error){
+      if(error){
+        STATE.error = error;
+        showConnBanner("error", "Keine Verbindung zur Datenbank (" + (error.message || error.code || "Fehler") + "). Änderungen werden lokal zwischengespeichert und automatisch synchronisiert, sobald wieder eine Verbindung besteht.");
+        return;
+      }
+      STATE.error = null;
+      STATE.entries = entries.slice();
+      sortEntries();
+      STATE.ready = true;
+      hideConnBanner();
+      setControlsEnabled(true);
+      updateSideCount();
+      renderTable();
+      renderAnalyse();
+    });
+  }
+  if(window.MessDB) startFirestoreSync();
+  else window.addEventListener("messdb-ready", startFirestoreSync);
 
   function makeId(entry){
     return [entry.source, entry.date, entry.time].join("|");
   }
 
-  /* De-dupe + merge: neue Einträge überschreiben Duplikate (gleiche Quelle+Datum+Zeit) nicht,
-     sie werden übersprungen, außer sie sind inhaltlich neu (siehe importEntries). */
+  /* Schreibt/aktualisiert einen Datensatz in Firestore. Gibt ein Promise
+     zurück; STATE.entries wird nicht direkt verändert, sondern automatisch
+     über den onChange-Listener aktualisiert, sobald Firestore bestätigt. */
   function upsertEntry(entry){
     entry.id = makeId(entry);
-    var idx = STATE.entries.findIndex(function(e){ return e.id === entry.id; });
-    if(idx >= 0){ STATE.entries[idx] = entry; }
-    else { STATE.entries.push(entry); }
-    STATE.entries.sort(function(a,b){ return (a.date+a.time).localeCompare(b.date+b.time); });
-    saveEntries(STATE.entries);
+    return window.MessDB.upsert(entry);
   }
 
   function importEntries(newEntries){
-    var added=0, skipped=0, updated=0;
+    var added=0, skipped=0, updated=0, toWrite=[];
     newEntries.forEach(function(e){
       if(!e || !e.source || !e.date || !e.time) { skipped++; return; }
       var id = makeId(e);
       var idx = STATE.entries.findIndex(function(x){ return x.id === id; });
       if(idx >= 0){
-        // identisch? dann überspringen, sonst aktualisieren
         var existing = JSON.stringify(STATE.entries[idx].values);
         var incoming = JSON.stringify(e.values||{});
         if(existing === incoming){ skipped++; }
-        else { e.id = id; STATE.entries[idx] = e; updated++; }
+        else { e.id = id; toWrite.push(e); updated++; }
       } else {
         e.id = id;
-        STATE.entries.push(e);
+        toWrite.push(e);
         added++;
       }
     });
-    STATE.entries.sort(function(a,b){ return (a.date+a.time).localeCompare(b.date+b.time); });
-    saveEntries(STATE.entries);
-    return { added:added, skipped:skipped, updated:updated };
+    var writePromise = toWrite.length ? window.MessDB.batchUpsert(toWrite) : Promise.resolve();
+    return writePromise.then(function(){
+      return { added:added, skipped:skipped, updated:updated };
+    });
   }
 
   function deleteEntry(id){
-    STATE.entries = STATE.entries.filter(function(e){ return e.id !== id; });
-    saveEntries(STATE.entries);
+    return window.MessDB.remove(id);
   }
 
   function wipeAllEntries(){
-    STATE.entries = [];
-    saveEntries(STATE.entries);
+    return window.MessDB.wipeAll();
   }
 
   /* ---------------------------------------------------------------
@@ -1145,12 +1268,18 @@
       showMsg(formMsg, errors.join(" "), true);
       return;
     }
-    upsertEntry(entry);
-    updateSideCount();
-    showMsg(formMsg, "Datensatz gespeichert (" + SOURCE_LABEL[entry.source] + ", " + entry.date + " " + entry.time + ").", false);
-    form.reset();
-    document.getElementById("f_source").value = entry.source;
-    setDefaultDateTime();
+    var btn = document.getElementById("entrySubmitBtn");
+    btn.disabled = true;
+    upsertEntry(entry).then(function(){
+      showMsg(formMsg, "Datensatz gespeichert (" + SOURCE_LABEL[entry.source] + ", " + entry.date + " " + entry.time + ").", false);
+      form.reset();
+      document.getElementById("f_source").value = entry.source;
+      setDefaultDateTime();
+    }).catch(function(err){
+      showMsg(formMsg, "Fehler beim Speichern: " + (err && err.message ? err.message : err) + " Bitte Internetverbindung prüfen.", true);
+    }).finally(function(){
+      btn.disabled = false;
+    });
   });
 
   document.getElementById("resetForm").addEventListener("click", function(){
@@ -1231,9 +1360,11 @@
     tbody.querySelectorAll("[data-del]").forEach(function(btn){
       btn.addEventListener("click", function(){
         if(window.confirm("Diesen Datensatz wirklich löschen?")){
-          deleteEntry(btn.getAttribute("data-del"));
-          updateSideCount();
-          renderTable();
+          btn.disabled = true;
+          deleteEntry(btn.getAttribute("data-del")).catch(function(err){
+            window.alert("Löschen fehlgeschlagen: " + (err && err.message ? err.message : err));
+            btn.disabled = false;
+          });
         }
       });
     });
@@ -1417,7 +1548,8 @@
   var pendingFile = null;
   importFile.addEventListener("change", function(){
     pendingFile = importFile.files[0] || null;
-    importBtn.disabled = !pendingFile;
+    pendingFileRef.current = !!pendingFile;
+    importBtn.disabled = !pendingFile || !STATE.ready;
   });
   importBtn.addEventListener("click", function(){
     if(!pendingFile) return;
@@ -1442,13 +1574,17 @@
         return;
       }
       newEntries = newEntries.filter(function(e){ return e.date && e.time; });
-      var result = importEntries(newEntries);
-      updateSideCount();
-      renderTable();
-      showMsg(importMsg, "Import abgeschlossen: " + result.added + " neu, " + result.updated + " aktualisiert, " + result.skipped + " unverändert/übersprungen.", false);
-      importFile.value = "";
-      pendingFile = null;
       importBtn.disabled = true;
+      importEntries(newEntries).then(function(result){
+        showMsg(importMsg, "Import abgeschlossen: " + result.added + " neu, " + result.updated + " aktualisiert, " + result.skipped + " unverändert/übersprungen.", false);
+      }).catch(function(err){
+        showMsg(importMsg, "Import fehlgeschlagen: " + (err && err.message ? err.message : err), true);
+      }).finally(function(){
+        importFile.value = "";
+        pendingFile = null;
+        pendingFileRef.current = false;
+        importBtn.disabled = true;
+      });
     };
     reader.onerror = function(){
       showMsg(importMsg, "Datei konnte nicht gelesen werden.", true);
@@ -1457,11 +1593,14 @@
   });
 
   document.getElementById("wipeAll").addEventListener("click", function(){
-    if(window.confirm("Wirklich ALLE lokal gespeicherten Datensätze löschen? Dies kann nicht rückgängig gemacht werden.")){
-      wipeAllEntries();
-      updateSideCount();
-      renderTable();
-      renderAnalyse();
+    if(window.confirm("Wirklich ALLE Datensätze in der zentralen Firebase-Datenbank löschen? Dies betrifft alle Nutzer und kann nicht rückgängig gemacht werden.")){
+      var btn = document.getElementById("wipeAll");
+      btn.disabled = true;
+      wipeAllEntries().catch(function(err){
+        window.alert("Löschen fehlgeschlagen: " + (err && err.message ? err.message : err));
+      }).finally(function(){
+        btn.disabled = false;
+      });
     }
   });
 
@@ -1479,6 +1618,7 @@
     getValueByKey: getValueByKey, pearson: pearson, collectPairs: collectPairs, basicStats: basicStats,
     entriesToCsv: entriesToCsv, csvToEntries: csvToEntries, parseCsvLine: parseCsvLine,
     validateEntry: validateEntry, numOrNull: numOrNull, importEntries: importEntries,
+    upsertEntry: upsertEntry, deleteEntry: deleteEntry, wipeAllEntries: wipeAllEntries,
     makeId: makeId, STATE: STATE
   };
 })();

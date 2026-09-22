@@ -255,9 +255,51 @@
   .conn-banner.show{display:block;}
   .conn-banner.connecting{background:#3a4a2f; color:#d7e8c4; border-top:1px solid #5a7a3f;}
   .conn-banner.error{background:#3a1f1a; color:#f3c9bd; border-top:1px solid var(--neg);}
+
+  .login-overlay{
+    position:fixed; inset:0; z-index:100;
+    background:var(--bg);
+    display:flex; align-items:center; justify-content:center;
+    padding:20px;
+  }
+  .login-overlay.hidden{display:none !important;}
+  .login-box{
+    background:var(--panel);
+    border:1px solid var(--line);
+    padding:32px 28px;
+    width:100%;
+    max-width:340px;
+  }
+  .login-box h1{font-size:17px;margin:0 0 6px 0;font-weight:600;}
+  .login-box p{margin:0 0 20px 0;color:var(--text-muted);font-size:13px;}
+  .login-box .field{margin-bottom:16px;}
+  .login-box button.btn{width:100%;}
+  .login-box .msg{margin-top:14px;}
+  .logout-link{
+    background:transparent;border:none;color:var(--text-muted);
+    font-size:11px;cursor:pointer;padding:0;text-decoration:underline;
+    font-family:var(--sans);
+  }
+  .logout-link:hover{color:var(--text);}
 </style>
 </head>
 <body>
+
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <h1>Messwert-Verbund</h1>
+    <p>Bitte mit dem Passwort für Kläranlage &amp; Indirekteinleiter anmelden.</p>
+    <form id="loginForm">
+      <div class="field">
+        <label for="loginPassword">Passwort</label>
+        <input type="password" id="loginPassword" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn" id="loginSubmitBtn">Anmelden</button>
+      <div class="msg" id="loginMsg"></div>
+    </form>
+  </div>
+</div>
+
 <div class="app">
 
   <nav class="side">
@@ -271,7 +313,8 @@
     <button class="navbtn" data-view="austausch">Datenaustausch</button>
     <div class="side-foot">
       Datensätze: <span class="count" id="sideCount">0</span><br>
-      Zentral in Firebase gespeichert
+      Zentral in Firebase gespeichert<br>
+      <button type="button" class="logout-link" id="logoutBtn">Abmelden</button>
     </div>
   </nav>
 
@@ -612,6 +655,9 @@
     getFirestore, collection, doc, setDoc, deleteDoc, getDocs,
     onSnapshot, writeBatch, enableIndexedDbPersistence
   } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+  import {
+    getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut
+  } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCxV_w1P9OV-4bSy-opx-HlVMT_5sy4Mtc",
@@ -623,9 +669,17 @@
   };
 
   const COLLECTION = "messwerte";
+  // Es gibt keine individuellen Benutzerkonten - Kläranlage und
+  // Indirekteinleiter melden sich mit demselben, gemeinsamen Passwort an.
+  // Firebase Authentication benötigt dafür intern eine E-Mail-Adresse als
+  // Kennung; diese ist rein technisch und muss kein echtes Postfach sein.
+  const SHARED_LOGIN_EMAIL = "zugang@klaerwerk-kreuztal.app";
+
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
+  const auth = getAuth(app);
   const listeners = [];
+  var unsubscribeSnapshot = null;
 
   // Offline-Persistenz: Eingaben funktionieren auch bei kurzzeitig fehlender
   // Internetverbindung (z. B. auf dem Anlagengelände) und werden automatisch
@@ -636,22 +690,35 @@
     console.warn("Offline-Persistenz nicht verfügbar:", err && err.code);
   });
 
-  onSnapshot(
-    collection(db, COLLECTION),
-    function(snapshot){
-      var entries = snapshot.docs.map(function(d){ return d.data(); });
-      listeners.forEach(function(fn){ fn(entries, null); });
-    },
-    function(error){
-      listeners.forEach(function(fn){ fn(null, error); });
-    }
-  );
-
   function chunk(arr, size){
     var out = [];
     for(var i=0;i<arr.length;i+=size) out.push(arr.slice(i, i+size));
     return out;
   }
+
+  // Der Firestore-Datenabgleich wird erst gestartet, sobald eine Anmeldung
+  // besteht (die Sicherheitsregeln verlangen request.auth != null), und beim
+  // Abmelden wieder beendet, damit dann keine Lesevorgänge mehr stattfinden.
+  function startSnapshot(){
+    if(unsubscribeSnapshot) return;
+    unsubscribeSnapshot = onSnapshot(
+      collection(db, COLLECTION),
+      function(snapshot){
+        var entries = snapshot.docs.map(function(d){ return d.data(); });
+        listeners.forEach(function(fn){ fn(entries, null); });
+      },
+      function(error){
+        listeners.forEach(function(fn){ fn(null, error); });
+      }
+    );
+  }
+  function stopSnapshot(){
+    if(unsubscribeSnapshot){ unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+  }
+
+  onAuthStateChanged(auth, function(user){
+    if(user) startSnapshot(); else stopSnapshot();
+  });
 
   window.MessDB = {
     onChange: function(fn){ listeners.push(fn); },
@@ -676,6 +743,12 @@
       });
       return Promise.all(batches);
     }
+  };
+
+  window.MessAuth = {
+    onAuthChange: function(fn){ onAuthStateChanged(auth, function(user){ fn(user); }); },
+    login: function(password){ return signInWithEmailAndPassword(auth, SHARED_LOGIN_EMAIL, password); },
+    logout: function(){ return signOut(auth); }
   };
 
   window.dispatchEvent(new Event("messdb-ready"));
@@ -872,8 +945,52 @@
       renderAnalyse();
     });
   }
-  if(window.MessDB) startFirestoreSync();
-  else window.addEventListener("messdb-ready", startFirestoreSync);
+
+  /* ---------------------------------------------------------------
+     Anmeldung (gemeinsames Passwort für Kläranlage & Indirekteinleiter).
+     window.MessAuth wird vom Firebase-Modul-Script weiter oben bereit-
+     gestellt. Solange keine Anmeldung besteht, bleibt das Login-Overlay
+     sichtbar und Firestore liefert (durch die Sicherheitsregeln) ohnehin
+     keine Daten.
+  --------------------------------------------------------------- */
+  function showLoginOverlay(){
+    document.getElementById("loginOverlay").classList.remove("hidden");
+  }
+  function hideLoginOverlay(){
+    document.getElementById("loginOverlay").classList.add("hidden");
+    document.getElementById("loginMsg").classList.remove("show");
+  }
+
+  function initAuthUI(){
+    window.MessAuth.onAuthChange(function(user){
+      if(user){ hideLoginOverlay(); }
+      else { showLoginOverlay(); }
+    });
+
+    var loginForm = document.getElementById("loginForm");
+    var loginMsg = document.getElementById("loginMsg");
+    var loginBtn = document.getElementById("loginSubmitBtn");
+    loginForm.addEventListener("submit", function(ev){
+      ev.preventDefault();
+      var password = document.getElementById("loginPassword").value;
+      loginBtn.disabled = true;
+      window.MessAuth.login(password).then(function(){
+        document.getElementById("loginPassword").value = "";
+      }).catch(function(err){
+        var code = err && err.code;
+        var text = (code === "auth/wrong-password" || code === "auth/invalid-credential" || code === "auth/invalid-login-credentials")
+          ? "Falsches Passwort."
+          : "Anmeldung fehlgeschlagen: " + (err && err.message ? err.message : err);
+        showMsg(loginMsg, text, true);
+      }).finally(function(){
+        loginBtn.disabled = false;
+      });
+    });
+
+    document.getElementById("logoutBtn").addEventListener("click", function(){
+      window.MessAuth.logout();
+    });
+  }
 
   function makeId(entry){
     return [entry.source, entry.date, entry.time].join("|");
@@ -1611,6 +1728,16 @@
   renderTableHead();
   renderTable();
   renderAnalyse();
+
+  // Firestore-Sync und Anmeldung werden bewusst ERST HIER gestartet, nachdem
+  // alle Formulare, Auswahllisten und Tabellenköpfe aufgebaut sind: die erste
+  // Benachrichtigung über window.MessDB.onChange kann sehr schnell (praktisch
+  // sofort) eintreffen, und darf nicht auf halbfertig initialisierte Ansichten
+  // treffen (z. B. leere Parameter-Auswahllisten in der Analyse).
+  if(window.MessDB) startFirestoreSync();
+  else window.addEventListener("messdb-ready", startFirestoreSync);
+  if(window.MessAuth) initAuthUI();
+  else window.addEventListener("messdb-ready", initAuthUI);
 
   // Für automatisierte Tests (Node/Headless) exponiert:
   window.__APP__ = {
